@@ -1,4 +1,29 @@
-This is your new Play 2.0 application
+New Relic Roadmapper
 =====================================
 
-This file will be packaged with your application, when using `play dist`.
+SETUP
+-----
+
+### Dependencies
+  -  [Postgres](http://www.postgresql.org/)
+    ```
+    $ brew install postgres
+    $ initdb /usr/local/var/postgres/
+    $ pg_ctl -D /usr/local/var/postgres/ start
+    ```
+  - [Play Framework](http://www.playframework.com/)
+    ```
+    $ brew install play
+    ```
+
+### Setup
+  -  Postgres
+    ```
+    $ createdb <user>
+    $ psql
+    > create user roadmapper;
+    > alter user roadmapper createdb;
+    > \q
+
+    $ createdb -U roadmapper roadmapper
+    ```
