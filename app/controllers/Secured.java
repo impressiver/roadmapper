@@ -14,18 +14,28 @@ public class Secured extends Security.Authenticator {
 
     @Override
     public String getUsername(Http.Context ctx) {
+        Configuration config = Play.application().configuration();
+        String email;
+
+        // Allow oauth override in dev
+        if (Play.isDev()) {
+            email = config.getString("auth.impersonate.email");
+
+            if (email != null && !email.isEmpty()) {
+                return email;
+            }
+        }
+
         String accessToken = ctx.session().get("oauth-access-token");
         if (accessToken == null) {
             return null;
         }
 
-        String email = ctx.session().get("oauth-email");
+        email = ctx.session().get("oauth-email");
         long lastCheck = Long.parseLong(ctx.session().get("oauth-last-check"));
 
         // check again if we've timed out
         if (System.currentTimeMillis() > lastCheck + OAUTH_TIMEOUT) {
-            Configuration config = Play.application().configuration();
-
             WS.Response response = WS.url(config.getString("oauth.userDetailUrl"))
                     .setHeader("Authorization", "Bearer " + accessToken)
                     .get().get();
