@@ -1,18 +1,24 @@
-import org.codehaus.jackson.node.ObjectNode;
-import play.GlobalSettings;
-import play.libs.Json;
-import play.mvc.Http;
-import play.mvc.Result;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import static play.mvc.Results.internalServerError;
+import play.*;
+import play.mvc.*;
+import play.mvc.Http.*;
+import play.libs.F.*;
+
+import play.libs.Json;
+
+import static play.mvc.Results.*;
 
 public class Global extends GlobalSettings {
-    @Override
-    public Result onError(Http.RequestHeader requestHeader, Throwable throwable) {
+
+    public Promise<SimpleResult> onError(RequestHeader request, Throwable t) {
         // todo: this seems weird
         ObjectNode json = Json.newObject();
         json.put("globalError", "unexpectedError");
 
-        return internalServerError(json);
+        return Promise.<SimpleResult>pure(internalServerError(
+            json
+        ));
     }
+
 }

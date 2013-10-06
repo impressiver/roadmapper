@@ -4,7 +4,7 @@ import com.avaje.ebean.*;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
 import models.*;
-import org.codehaus.jackson.JsonNode;
+import com.fasterxml.jackson.databind.JsonNode;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;

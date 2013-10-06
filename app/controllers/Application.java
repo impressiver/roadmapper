@@ -4,7 +4,7 @@ import com.avaje.ebean.Ebean;
 import models.DashboardStats;
 import models.ProblemState;
 import models.User;
-import org.codehaus.jackson.JsonNode;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeConstants;
 import org.joda.time.DateTimeZone;

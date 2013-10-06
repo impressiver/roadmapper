@@ -7,7 +7,7 @@ import models.Feature;
 import models.Problem;
 import models.ProblemState;
 import models.User;
-import org.codehaus.jackson.JsonNode;
+import com.fasterxml.jackson.databind.JsonNode;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
