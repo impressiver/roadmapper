@@ -5,192 +5,178 @@ Array.prototype.remove = function (from, to) {
     return this.push.apply(this, rest);
 };
 
-(function () {
-    angular.module('roadmapper', ["ngCookies", "ui.bootstrap", "ui.select2"]).
-        config(function ($routeProvider) {
-            $routeProvider.
-                when('/signup', {controller: SignupCtrl, templateUrl: 'templates/signup.html'}).
-                when('/login', {controller: LoginCtrl, templateUrl: 'templates/login.html'}).
-                when('/dashboard', {controller: DashboardCtrl, templateUrl: 'templates/dashboard.html'}).
-                when('/problems', {controller: ProblemsCtrl, templateUrl: 'templates/problems.html'}).
-                when('/problems/:problemId', {controller: ProblemsCtrl, templateUrl: 'templates/problems.html'}).
-                when('/features', {controller: FeaturesCtrl, templateUrl: 'templates/features.html'}).
-                when('/features/:featureId', {controller: FeaturesCtrl, templateUrl: 'templates/features.html'}).
-                when('/teams', {controller: TeamsCtrl, templateUrl: 'templates/teams.html'}).
-                otherwise({redirectTo: '/login'});
-        })
-        .directive('integer', function() {
-            return {
-                require: 'ngModel',
-                link: function(scope, elm, attrs, ctrl) {
-                    ctrl.$parsers.unshift(function(viewValue) {
-                        if (/^\-?\d*$/.test(viewValue)) {
-                            // it is valid
-                            ctrl.$setValidity('integer', true);
-                            return viewValue;
-                        } else {
-                            // it is invalid, return undefined (no model update)
-                            ctrl.$setValidity('integer', false);
-                            return undefined;
-                        }
-                    });
-                }
-            };
-        })
-        .directive("navbar", function () {
-            return {
+var LINK_EXPRESSION = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
 
-                controller: function ($scope, $location, $rootScope, $cookieStore) {
-                    $scope.login = function () {
-                        $location.path("/login");
-                    };
-
-                    $scope.signup = function () {
-                        $location.path("/signup");
-                    };
-
-                    $scope.dashboard = function () {
-                        $location.path("/dashboard");
-                    };
-
-                    $scope.problems = function () {
-                        $location.path("/problems");
-                    };
-
-                    $scope.features = function () {
-                        $location.path("/features");
-                    };
-
-                    $scope.teams = function () {
-                        $location.path("/teams");
-                    };
-
-                    $scope.logout = function () {
-                        $cookieStore.remove("session.id");
-                        window.localStorage.removeItem("session.id");
-                        $rootScope.user = null;
-                        $location.path("/");
-                    };
-                },
-                templateUrl: "templates/navbar.html"
-            }
-        })
-        .filter('noFractionCurrency',
-            [ '$filter', '$locale',
-                function (filter, locale) {
-                    var currencyFilter = filter('currency');
-                    var formats = locale.NUMBER_FORMATS;
-                    return function (amount, currencySymbol) {
-                        var value = currencyFilter(amount, currencySymbol);
-                        var sep = value.indexOf(formats.DECIMAL_SEP);
-                        if (amount >= 0) {
-                            return value.substring(0, sep);
-                        }
-                        return value.substring(0, sep) + ')';
-                    };
-                } ])
-        .filter('truncate', function() {
-            return function(input, length) {
-                if (input == null) {
-                    return "";
-                }
-
-                if (input.length + 4 < length) {
-                    return input;
-                } else {
-                    return input.substring(0, length) + " ...";
-                }
-            }
-        })
-        .run(function ($rootScope, $http, $cookieStore, $location) {
-            $rootScope.query = [{id: "state:OPEN", text: "<strong>State</strong>: OPEN"}];
-            $rootScope.featureQuery = [{id: "state:OPEN", text: "<strong>State</strong>: OPEN"}];
-
-            // wire up shared enums
-            $rootScope.enumQuarters = enumQuarters;
-            $rootScope.enumSizes = enumSizes;
-            $rootScope.enumProblemStates = enumProblemStates;
-            $rootScope.enumFeatureStates = enumFeatureStates;
-
-            // check if there is already a session?
-            var sessionId = window.localStorage["session.id"];
-            if (sessionId == null) {
-                sessionId = $cookieStore.get("session.id");
-            }
-
-            if (sessionId != null) {
-                $http.defaults.headers.common['X-Session-ID'] = sessionId;
-                $cookieStore.put("session.id", sessionId);
-                $http.get("/sessions/" + sessionId)
-                    .success(function (data) {
-                        $rootScope.user = data.user;
-                    })
-                    .error(function () {
-                        // remove the cookie, since it's dead
-                        $cookieStore.remove("session.id");
-                        window.localStorage.removeItem("session.id");
-                        $location.path("/login");
-                    });
-            } else {
-                if ($location.path() != "/login" && $location.path() != "/signup") {
-                    $location.path("/login");
-                }
-            }
-        });
-
-    function SignupCtrl($scope, $http, $location) {
-        $scope.submit = function (user) {
-            $http.post('/users', user)
-                .success(function () {
-                    $location.path('/login')
+angular.module('roadmapper', ["ngCookies", "ui.bootstrap", "ui.select2"]).
+    config(function ($routeProvider) {
+        $routeProvider.
+            when('/dashboard', {controller: DashboardCtrl, templateUrl: templateUrls.dashboard}).
+            when('/problems', {controller: ProblemsCtrl, templateUrl: templateUrls.problems}).
+            when('/problems/:problemId', {controller: ProblemsCtrl, templateUrl: templateUrls.problems}).
+            when('/features', {controller: FeaturesCtrl, templateUrl: templateUrls.features}).
+            when('/features/:featureId', {controller: FeaturesCtrl, templateUrl: templateUrls.features}).
+            when('/teams', {controller: TeamsCtrl, templateUrl: templateUrls.teams}).
+            when('/tags', {controller: TagsCtrl, templateUrl: templateUrls.tags}).
+            otherwise({redirectTo: '/dashboard'});
+    })
+    .directive('integer', function() {
+        return {
+            require: 'ngModel',
+            link: function(scope, elm, attrs, ctrl) {
+                ctrl.$parsers.unshift(function(viewValue) {
+                    if (/^\-?\d*$/.test(viewValue)) {
+                        // it is valid
+                        ctrl.$setValidity('integer', true);
+                        return viewValue;
+                    } else {
+                        // it is invalid, return undefined (no model update)
+                        ctrl.$setValidity('integer', false);
+                        return undefined;
+                    }
                 });
-        }
-    }
-
-    function LoginCtrl($location, $scope, $rootScope, $http, $cookieStore) {
-        var loginSuccess = function (data) {
-            $http.defaults.headers.common['X-Session-ID'] = data.id;
-            $cookieStore.put("session.id", data.id);
-            if ($scope.remember) {
-                window.localStorage["session.id"] = data.id;
             }
-
-            $rootScope.user = data.user;
-            $location.path('/dashboard')
         };
+    })
+    .directive("navbar", function () {
+        return {
 
-        // check if there is already a session?
-        var sessionId = window.localStorage["session.id"];
-        if (sessionId == null) {
-            sessionId = $cookieStore.get("session.id");
+            controller: function ($scope, $location, $rootScope, $cookieStore) {
+                $scope.dashboard = function () {
+                    $location.path("/dashboard");
+                };
+
+                $scope.problems = function () {
+                    $location.path("/problems");
+                };
+
+                $scope.tags = function () {
+                    $location.path("/tags");
+                };
+
+                $scope.features = function () {
+                    $location.path("/features");
+                };
+
+                $scope.teams = function () {
+                    $location.path("/teams");
+                };
+
+                $scope.logout = function () {
+                    window.location.href = "/logout"
+                };
+            },
+            templateUrl: "nav.html"
         }
-        if (sessionId != null) {
-            $http.get("/sessions/" + sessionId).success(loginSuccess).error(function () {
-                // remove the cookie, since it's dead
-                $cookieStore.remove("session.id");
-                window.localStorage.removeItem("session.id");
-            });
+    })
+    .filter('noFractionCurrency',
+        [ '$filter', '$locale',
+            function (filter, locale) {
+                var currencyFilter = filter('currency');
+                var formats = locale.NUMBER_FORMATS;
+                return function (amount, currencySymbol) {
+                    var value = currencyFilter(amount, currencySymbol);
+                    var sep = value.indexOf(formats.DECIMAL_SEP);
+                    if (amount >= 0) {
+                        return value.substring(0, sep);
+                    }
+                    return value.substring(0, sep) + ')';
+                };
+            } ])
+    .filter('truncate', function() {
+        return function(input, length) {
+            if (input == null) {
+                return "";
+            }
+
+            if (input.length + 4 < length) {
+                return input;
+            } else {
+                return input.substring(0, length) + " ...";
+            }
         }
+    })
+    .filter('minlinks', function() {
+        return function(input) {
+            return input.replace(LINK_EXPRESSION, "<link>");
+        }
+    })
+    .filter('size', function() {
+        return function(input) {
+            if (input == null) {
+                return "";
+            }
 
-        $scope.unauthorized = $rootScope.user == null;
+            return input.substring(0, 1);
+        }
+    })
+    .filter('shortQuarter', function() {
+        return function(qtr) {
+            if (qtr == null) {
+                return null;
+            }
 
-        $scope.$watch("user.email", function (value) {
-            $scope.unauthorized = false;
+            return qtr.substring(0, 2);
+        }
+    })
+    .filter('longQuarter', function() {
+        return function(qtr) {
+            if (qtr == null) {
+                return null;
+            }
+
+            return qtr.substring(3, 7) + ' ' + qtr.substring(0, 2);
+        }
+    })
+    .run(function ($rootScope, $http, $cookieStore, $location) {
+        $rootScope.query = [{id: "state:OPEN", text: "<strong>State</strong>: OPEN"}];
+        $rootScope.featureQuery = [{id: "state:OPEN", text: "<strong>State</strong>: OPEN"}];
+
+        // wire up shared enums
+        $rootScope.enumQuarters = enumQuarters;
+        $rootScope.enumSizes = enumSizes;
+        $rootScope.enumProblemStates = enumProblemStates;
+        $rootScope.enumFeatureStates = enumFeatureStates;
+
+        // set up i18n bundle
+        $rootScope.i18n = i18n;
+
+        $rootScope.user = user;
+
+        // mixpanel stuff
+        mixpanel.set_config({track_pageview: false});
+        mixpanel.identify(user.email);
+        mixpanel.register({
+            "User Email": user.email,
+            "User Name": user.name
         });
+        mixpanel.people.set("$email", user.email);
+        mixpanel.people.set("$username", user.email);
+        mixpanel.people.set("$name", user.name);
+        mixpanel.people.set("$created", new Date(user.firstLogin));
+        mixpanel.people.increment("Sessions");
+        mixpanel.name_tag(user.name);
+    });
 
-        $scope.submit = function (user) {
-            $http.post('/authenticate', user)
-                .success(loginSuccess)
-                .error(function () {
-                    $scope.unauthorized = true;
-                });
-        }
+function FormErrorHandler($scope) {
+    return function(data, status, headers) {
+        $scope.errors = [data.globalError];
     }
+}
 
-    function DashboardCtrl($scope, $rootScope, $location) {
-        if ($rootScope.user == null) {
-            $location.path("/login");
-            return;
-        }
+function ClearErrors($scope) {
+    $scope.errors = null;
+}
+
+function LogHandler($scope) {
+    return function(data, status, headers, config) {
+        // todo: we could do more here
+        console.log("Got back " + status + " while requesting " + config.url);
     }
-})();
+}
+
+function DashboardCtrl($scope, $http) {
+    $http.get('/dashboard-stats')
+        .success(function (stats) {
+            $scope.stats = stats;
+        }).error(LogHandler($scope));
+}

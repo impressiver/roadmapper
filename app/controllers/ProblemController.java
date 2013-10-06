@@ -80,14 +80,12 @@ public class ProblemController extends Controller {
 
     public static Result find() {
         if (!request().queryString().containsKey("query")) {
-            // todo: not sure this is a good idea, might get too large
-            return ok(Json.toJson(Problem.find.all()));
+            return ok();
         }
 
         String query = request().queryString().get("query")[0];
         if (query.equals("")) {
-            // todo: same as above
-            return ok(Json.toJson(Problem.find.all()));
+            return ok();
         }
 
         ExpressionList<Problem> where = Problem.find.where();
@@ -153,6 +151,11 @@ public class ProblemController extends Controller {
                 return ok();
             }
         }
+
+        // fixes N+1 query problem
+        where.join("reporter");
+        where.join("lastModifiedBy");
+        where.join("feature");
 
         return ok(Json.toJson(where.findList()));
     }

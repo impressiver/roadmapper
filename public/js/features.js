@@ -28,6 +28,18 @@ function FeaturesCtrl($scope, $http, $routeParams, $location, $route, $rootScope
 
     $scope.$watch("featureQuery", $scope.search);
 
+    $scope.sizeSort = function(feature) {
+    };
+
+    $scope.quarterSort = function(feature) {
+        var qtr = feature.quarter;
+        if (qtr == null) {
+            return null;
+        }
+
+        return qtr.substring(3, 7) + qtr.substring(0, 2);
+    };
+
     var sortHack = function(tag) {
         if (tag.indexOf("state:") == 0) {
             return "00000" + tag;
@@ -45,6 +57,8 @@ function FeaturesCtrl($scope, $http, $routeParams, $location, $route, $rootScope
             return "66666" + tag;
         }
     };
+
+    var counter = 1;
 
     $scope.querySelect2Options = {
         multiple: true,
@@ -77,6 +91,9 @@ function FeaturesCtrl($scope, $http, $routeParams, $location, $route, $rootScope
         tags: [],
         tokenSeparators: [",", " "],
         query: function (query) {
+            counter++;
+            var cur = counter;
+
             var term = query.term;
             if (term == "") {
                 query.callback({results: []});
@@ -120,14 +137,17 @@ function FeaturesCtrl($scope, $http, $routeParams, $location, $route, $rootScope
 
             $http.get("/tags?query=" + term)
                 .success(function (tags) {
+                    if (cur != counter) {
+                        //console.log("discarding: " +  cur + " != " + counter);
+                        return;
+                    }
+                    //console.log("keeping: " + cur + " == " + counter);
+
                     tags.map(function(tag) {results.push({id: tag, text: "<strong>Tag</strong>: " + tag})});
                     query.callback({
                         results: results
                     });
-                })
-                .error(function () {
-                    debugger;
-                });
+                }).error(LogHandler($scope));
         },
         formatSelection: function(object, container) {
             return object.text;
@@ -144,31 +164,33 @@ function FeaturesCtrl($scope, $http, $routeParams, $location, $route, $rootScope
     };
 
     $scope.createFeature = function (feature) {
-
         // convert tags from select2 {id: ..., text: ...} format to just simple array of raw tag value
         var copy = angular.copy(feature);
         copy.tags = [];
         feature.tags.map(function(tag) {copy.tags.push(tag.id)});
 
+        // remove the "text" field from the team that select2 adds so that it will be well-formed
+        if (copy.team) {
+            delete copy.team.text;
+        }
+
         $http.post('/features', copy)
             .success(function (returnedFeature) {
                 $scope.features.push(returnedFeature);
                 $scope.closeNewFeature();
-            })
-            .error(function () {
-                debugger;
-            });
+            }).error(FormErrorHandler($scope));
     };
 
     $scope.closeNewFeature = function() {
         $location.path("/features");
+        ClearErrors($scope);
         $scope.newFeature = null;
         $scope.showNewFeature = false;
     };
 
     $scope.modalOptions = {
-        backdropFade: true,
-        dialogFade: true,
+        backdropFade: false,
+        dialogFade: false,
         dialogClass: 'modal modal-feature'
     };
 
@@ -186,6 +208,11 @@ function FeaturesCtrl($scope, $http, $routeParams, $location, $route, $rootScope
                 featureWithTags.tags = [];
                 rawTags.map(function(tag) {featureWithTags.tags.push({id: tag, text: tag})});
 
+                // map the team name over to the "text" attribute to make select2 happy
+                if (featureWithTags.team) {
+                    featureWithTags.team.text = featureWithTags.team.name;
+                }
+
                 $scope.selectedFeature = featureWithTags;
                 $scope.showViewFeature = true;
                 $location.path("/features/" + feature.id);
@@ -198,6 +225,11 @@ function FeaturesCtrl($scope, $http, $routeParams, $location, $route, $rootScope
         copy.tags = [];
         feature.tags.map(function(tag) {copy.tags.push(tag.id)});
 
+        // remove the "text" field from the team that select2 adds so that it will be well-formed
+        if (copy.team) {
+            delete copy.team.text;
+        }
+
         $http.put('/features/' + feature.id, copy)
             .success(function(returnedFeature) {
                 for (var i = 0; i < $scope.features.length; i++) {
@@ -208,13 +240,11 @@ function FeaturesCtrl($scope, $http, $routeParams, $location, $route, $rootScope
                 }
 
                 $scope.closeViewFeature();
-            })
-            .error(function() {
-                debugger;
-            })
+            }).error(FormErrorHandler($scope));
     };
 
     $scope.closeViewFeature = function() {
+        ClearErrors($scope);
         $location.path("/features");
         $scope.showViewFeature = false;
     };
@@ -238,12 +268,23 @@ function FeaturesCtrl($scope, $http, $routeParams, $location, $route, $rootScope
                     query.callback({
                         results: results
                     });
-                })
-                .error(function () {
-                    debugger;
-                });
+                }).error(LogHandler($scope));
         },
         formatNoMatches: function(){ return 'empty';}
+    };
+
+    $scope.teamSelect2Options = {
+        allowClear: true,
+        query: function (query) {
+            $http.get("/teams")
+                .success(function (teams) {
+                    var results = [];
+                    teams.map(function(team) {results.push({id: team.id, text: team.name})});
+                    query.callback({
+                        results: results
+                    });
+                }).error(LogHandler($scope));
+        }
     };
 
     if ($routeParams.featureId) {

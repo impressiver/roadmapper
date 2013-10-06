@@ -89,7 +89,7 @@ public class FeatureController extends Controller {
         String query = request().queryString().get("query")[0];
         if (query.equals("")) {
             // todo: same as above
-            return ok(Json.toJson(Feature.find.all()));
+            return ok(Json.toJson(dressFeatures(Feature.find.all())));
         }
 
         ExpressionList<Feature> where = Feature.find.where();
@@ -142,8 +142,11 @@ public class FeatureController extends Controller {
             }
         }
 
+        // fixes N+1 query problem
+        where.join("creator");
+        where.join("lastModifiedBy");
+
         return ok(Json.toJson(dressFeatures(where.findList())));
-        //return ok(Json.toJson(where.findList()));
     }
 
     public static Feature dressFeature(Feature feature) {
@@ -165,21 +168,19 @@ public class FeatureController extends Controller {
 
             // normalize to max score
             feature.score = (int) (score / MAX_SCORE * 100);
+            feature.problemCount = 0;
+            feature.problemRevenue = 0;
         }
 
         // now query all problems
         List<Problem> problems = Problem.find.where().in("feature_id", featureMap.keySet()).findList();
         for (Problem problem : problems) {
             Feature feature = featureMap.get(problem.feature.id);
-            if (feature.problemCount == null) {
-                feature.problemCount = 0;
-            }
-            if (feature.problemRevenue == null) {
-                feature.problemRevenue = 0;
-            }
 
             feature.problemCount++;
-            feature.problemRevenue += problem.annualRevenue;
+            if (problem.annualRevenue != null) {
+                feature.problemRevenue += problem.annualRevenue;
+            }
         }
 
         return features;

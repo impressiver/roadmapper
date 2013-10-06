@@ -13,3 +13,5 @@ dist
 /.classpath
 /.project
 /RUNNING_PID
+newrelic.yml
+conf/overrides.conf

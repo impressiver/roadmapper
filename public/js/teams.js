@@ -1,4 +1,4 @@
-function TeamsCtrl($scope, $http, $location) {
+function TeamsCtrl($scope, $rootScope, $http, $location) {
     $scope.showNewTeamModal = function() {
         $scope.showNewTeam = true;
     };
@@ -8,10 +8,7 @@ function TeamsCtrl($scope, $http, $location) {
             .success(function (returnedTeam) {
                 $scope.teams.push(returnedTeam);
                 $scope.closeNewTeam();
-            })
-            .error(function () {
-                debugger;
-            });
+            }).error(LogHandler($scope));
     };
 
     $scope.closeNewTeam = function() {
@@ -20,9 +17,18 @@ function TeamsCtrl($scope, $http, $location) {
     };
 
     $scope.modalOptions = {
-        backdropFade: true,
-        dialogFade: true,
+        backdropFade: false,
+        dialogFade: false,
         dialogClass: 'modal modal-team'
+    };
+
+    $scope.saveUtilization = function(team) {
+        $http.put('/teams/' + team.id, team)
+            .success(function (updatedTeam) {
+                team.name = updatedTeam.name;
+                team.utilization = updatedTeam.utilization;
+                team.quarterStaffSummary = updatedTeam.quarterStaffSummary;
+            }).error(LogHandler($scope));
     };
 
     $scope.saveStaffLevel = function(team, quarter) {
@@ -30,13 +36,34 @@ function TeamsCtrl($scope, $http, $location) {
         $http.put('/teams/' + team.id + '/' + quarter, newCount)
             .success(function (staffSummary) {
                 team.quarterStaffSummary[quarter] = staffSummary;
-            })
-            .error(function () {
-                debugger;
-            });
+            }).error(LogHandler($scope));
     };
 
-    $http.get('/teams')
+    $scope.checkStaffing = function(summary) {
+        if (summary.scheduled == 0) {
+            return "unscheduled";
+        }
+
+        var pct = summary.scheduled / summary.staffed;
+        if (pct < 0.85) {
+            return "underutilized";
+        }
+
+        if (pct < 1.15) {
+            return "ok";
+        }
+
+        return "critical";
+    };
+
+    $scope.findFeatures = function(team, quarter) {
+        $rootScope.featureQuery = [{id: "team:" + team.name, text: "<strong>Team</strong>: " + team.name},
+            {id: "quarter:" + quarter, text: "<strong>Quarter</strong>: " + quarter}];
+        $location.path("/features");
+
+    };
+
+    $http.get('/teams?detailed=true')
         .success(function (teams) {
             $scope.teams = teams;
         });

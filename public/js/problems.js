@@ -28,6 +28,10 @@ function ProblemsCtrl($scope, $http, $routeParams, $location, $route, $rootScope
 
     $scope.$watch("query", $scope.search);
 
+    // default to sorting by reported date
+    $scope.predicate = "date";
+    $scope.reverse = true;
+
     var sortHack = function(tag) {
         if (tag.indexOf("state:") == 0) {
             return "00000" + tag;
@@ -49,6 +53,7 @@ function ProblemsCtrl($scope, $http, $routeParams, $location, $route, $rootScope
     };
 
     $scope.querySelect2Options = {
+        openOnEnter: false,
         multiple: true,
         sortResults: function(results, container, query) {
             if (query.term) {
@@ -128,10 +133,7 @@ function ProblemsCtrl($scope, $http, $routeParams, $location, $route, $rootScope
                     query.callback({
                         results: results
                     });
-                })
-                .error(function () {
-                    debugger;
-                });
+                }).error(LogHandler($scope));
         },
         formatSelection: function(object, container) {
             return object.text;
@@ -148,7 +150,6 @@ function ProblemsCtrl($scope, $http, $routeParams, $location, $route, $rootScope
     };
 
     $scope.createProblem = function (problem) {
-
         // convert tags from select2 {id: ..., text: ...} format to just simple array of raw tag value
         var copy = angular.copy(problem);
         copy.tags = [];
@@ -156,23 +157,30 @@ function ProblemsCtrl($scope, $http, $routeParams, $location, $route, $rootScope
 
         $http.post('/problems', copy)
             .success(function (returnedProblem) {
+                mixpanel.people.increment("Problems Recorded");
+                mixpanel.track("Record Problem", returnedProblem);
+
                 $scope.problems.push(returnedProblem);
+                $scope.clearNewProblem();
                 $scope.closeNewProblem();
-            })
-            .error(function () {
-                debugger;
-            });
+            }).error(FormErrorHandler($scope));
     };
 
     $scope.closeNewProblem = function() {
         $location.path("/problems");
-        $scope.newProblem = null;
+        ClearErrors($scope);
         $scope.showNewProblem = false;
     };
 
+    $scope.clearNewProblem = function() {
+        // seperate clear functionality addresses https://github.com/lightbody/roadmapper/issues/2
+        ClearErrors($scope);
+        $scope.newProblem = null;
+    };
+
     $scope.modalOptions = {
-        backdropFade: true,
-        dialogFade: true,
+        backdropFade: false,
+        dialogFade: false,
         dialogClass: 'modal modal-problem'
     };
 
@@ -221,16 +229,16 @@ function ProblemsCtrl($scope, $http, $routeParams, $location, $route, $rootScope
                 }
 
                 $scope.closeViewProblem();
-            })
-            .error(function() {
-                debugger;
-            })
+            }).error(FormErrorHandler($scope))
     };
 
     $scope.closeViewProblem = function() {
         $location.path("/problems");
+        ClearErrors($scope);
         $scope.showViewProblem = false;
     };
+
+    var counter = 1;
 
     $scope.select2Options = {
         multiple: true,
@@ -244,18 +252,22 @@ function ProblemsCtrl($scope, $http, $routeParams, $location, $route, $rootScope
         tags: [],
         tokenSeparators: [",", " "],
         query: function (query) {
-            console.log("in query function2");
+            counter++;
+            var cur = counter;
             $http.get("/tags?query=" + query.term)
                 .success(function (tags) {
+                    if (cur != counter) {
+                        //console.log("discarding: " +  cur + " != " + counter);
+                        return;
+                    }
+                    //console.log("keeping: " + cur + " == " + counter);
+
                     var results = [];
                     tags.map(function(tag) {results.push({id: tag, text: tag})});
                     query.callback({
                         results: results
                     });
-                })
-                .error(function () {
-                    debugger;
-                });
+                }).error(LogHandler($scope));
         },
         formatNoMatches: function(){ return 'empty';}
     };
@@ -270,10 +282,7 @@ function ProblemsCtrl($scope, $http, $routeParams, $location, $route, $rootScope
                     query.callback({
                         results: results
                     });
-                })
-                .error(function () {
-                    debugger;
-                });
+                }).error(LogHandler($scope));
         }
     };
 

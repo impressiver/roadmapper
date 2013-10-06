@@ -1,5 +1,6 @@
 import sbt._
-import PlayProject._
+import play.Project._
+
 
 object ApplicationBuild extends Build {
 
@@ -7,11 +8,14 @@ object ApplicationBuild extends Build {
     val appVersion      = "1.0-SNAPSHOT"
 
     val appDependencies = Seq(
-        "postgresql" % "postgresql" % "9.1-901.jdbc4"
+      javaCore, javaJdbc, javaEbean, jdbc, filters,
+        "postgresql" % "postgresql" % "9.1-901.jdbc4",
+        "javax.mail" % "mail" % "1.4.7",
+        "com.newrelic.agent.java" % "newrelic-agent" % "2.20.0"
     )
 
-    val main = PlayProject(appName, appVersion, appDependencies, mainLang = JAVA).settings(
-      // Add your own project settings here
+    val main = play.Project(appName, appVersion, appDependencies).settings(
+      // Add your own project settings here      
     )
 
 }
